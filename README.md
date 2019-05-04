@@ -1,4 +1,4 @@
-# CF Express Confi
+# CF Express Config
 A simple package that combines several features for easy configuration of an Express server with support for Cloud Foundry (VCAP) Services.
 
 This package combines several useful packages that allow you to easily provide different ways to configure your express server (or any other Node.js application) via environment files, command line options or environment variables.
