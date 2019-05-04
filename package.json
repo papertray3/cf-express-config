@@ -1,5 +1,5 @@
 {
-  "name": "@papertray3/express-config",
+  "name": "@papertray3/cf-express-config",
   "version": "1.4.0",
   "description": "Config module for express server components",
   "main": "lib/index.js",
@@ -12,16 +12,16 @@
   "license": "MIT",
   "devDependencies": {
     "rimraf": "^2.6.3",
-    "typescript": "^2.9.2"
+    "typescript": "^3.4.5"
   },
   "dependencies": {
-    "@types/dotenv": "^4.0.3",
-    "@types/nconf": "^0.0.37",
-    "@types/node": "^10.12.26",
-    "@types/yargs": "^11.1.2",
-    "cfenv": "^1.2.0",
-    "dotenv": "^6.2.0",
+    "@types/dotenv": "^6.1.1",
+    "@types/nconf": "^0.10.0",
+    "@types/node": "^12.0.0",
+    "@types/yargs": "^13.0.0",
+    "cfenv": "^1.2.2",
+    "dotenv": "^8.0.0",
     "nconf": "^0.10.0",
-    "yargs": "^12.0.5"
+    "yargs": "^13.2.2"
   }
 }

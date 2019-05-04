@@ -1,7 +1,9 @@
+import nconf from 'nconf';
 import { config } from 'dotenv';
 import { resolve, normalize } from 'path';
 import yargs from 'yargs';
-import nconf = require('nconf');
+
+export type Config = typeof nconf;
 
 const cfenv = require('cfenv');
 
@@ -14,45 +16,49 @@ export interface CliOption extends yargs.Options {
 }
 
 export interface CliOptions {
-    [option: string] : CliOption
+    [option: string]: CliOption
 }
 
 export interface ConfigOptions {
     version?: string,
-    envPath?: string,
+    envPath?: string, // path to the .env file for dotenv, otherwise './.env'
+    vcapPath?: string, // local definition of vcap services, default of './vcap-local.js'
     usage?: string,
     cliOptions?: CliOptions,
-    overrides?: ConfigDefaults
+    overrides?: ConfigOverrides
 }
 
-export const commonOptions : CliOptions = {
-    env: {
-        describe: 'Operational mode',
-        choices: ['development', 'test', 'production'],
-        type: 'string',
-        env: 'NODE_ENV',
-        confDefault: 'production'
-    },
-    port: {
-        describe: 'Port to bind to',
-        type: 'number',
-        env: 'PORT'
-    },
-    bind: {
-        describe: 'Host to bind to',
-        type: 'string',
-        env: 'BIND'
-    },
-    logLevel: {
-        describe: 'log4js log level. Use env:LOG4JS_CONFIG to point to a configuration file (https://www.npmjs.com/package/log4js).',
-        type: 'string',
-        env: 'LOG_LEVEL',
-        confDefault: 'info'
-    }
+export enum CommonConfigNames {
+    ENV = 'env',
+    PORT = 'port',
+    BIND = 'bind',
+    LOG_LEVEL = 'logLevel',
+    IS_LOCAL = 'isLocal'
 }
 
-type ConfigDefaults = {
-    [key : string]: any
+export const commonOptions: CliOptions = {};
+commonOptions[CommonConfigNames.ENV] = {
+    describe: 'Operational mode',
+    choices: ['development', 'test', 'production'],
+    type: 'string',
+    env: 'NODE_ENV',
+    confDefault: 'production'
+};
+
+commonOptions[CommonConfigNames.PORT] = {
+    describe: 'Port to bind to',
+    type: 'number',
+    env: 'PORT'
+};
+
+commonOptions[CommonConfigNames.BIND] = {
+    describe: 'Host to bind to',
+    type: 'string',
+    env: 'BIND'
+};
+
+type ConfigOverrides = {
+    [key: string]: any
 }
 
 type NconfObject = {
@@ -76,29 +82,29 @@ type Transforms = {
     [key: string]: BasicTransform
 }
 
-var thisConfig : any = null;
-
-export function  getConfig(options? : ConfigOptions) {
-
-    if (thisConfig != null) {
-        return thisConfig;
-    } else if (options == undefined) {
-        throw new Error('Missing configuration options');
-    }
+export function configure(options: ConfigOptions): Config {
 
     let dotEnvPath = options.envPath;
     if (dotEnvPath) {
-        config({path: resolve(normalize(dotEnvPath))});
+        config({ path: resolve(normalize(dotEnvPath)) });
     } else {
         config();
     }
 
+    let vcapLocal: any;
+    let vcapPath: string = options.vcapPath ? options.vcapPath : './vcap-local.js';
+    try {
+        vcapLocal = require(vcapPath);
+    } catch (e) { }
+    let appEnvOpts: any = vcapLocal ? { vcap: vcapLocal } : {};
+    let appEnv = cfenv.getAppEnv(appEnvOpts);
+
     if (options.usage) yargs.usage(options.usage);
     if (options.version) yargs.version(options.version);
-    let opts : CliOptions = options.cliOptions || commonOptions;
-    let whitelist : Array<string> = [];
-    let transforms : Transforms = {};
-    let defaults : ConfigDefaults = {};
+    let opts: CliOptions = options.cliOptions || commonOptions;
+    let whitelist: Array<string> = [];
+    let transforms: Transforms = {};
+    let defaults: ConfigOverrides = {};
 
     Object.keys(opts).forEach((key: string) => {
         let opt = opts[key];
@@ -106,7 +112,7 @@ export function  getConfig(options? : ConfigOptions) {
             opt.describe += ' (';
             let envs = Array.isArray(opt.env) ? opt.env : [opt.env];
             whitelist.push(key);
-            envs.forEach((env : string, idx : number) => {
+            envs.forEach((env: string, idx: number) => {
                 transforms[env] = bt(key);
                 if (idx > 0) {
                     opt.describe += ', ';
@@ -128,7 +134,7 @@ export function  getConfig(options? : ConfigOptions) {
         .env({
             parseValues: true,
             whitelist: whitelist,
-            transform: (obj: NconfObject) : NconfObject | boolean => {
+            transform: (obj: NconfObject): NconfObject | boolean => {
                 if (transforms[obj.key]) {
                     return transforms[obj.key](obj);
                 }
@@ -141,19 +147,17 @@ export function  getConfig(options? : ConfigOptions) {
 
     let overrides = options.overrides || {};
     if (!overrides.isLocal) {
-        overrides.isLocal = cfenv.getAppEnv().isLocal;
+        overrides.isLocal = appEnv.isLocal;
     }
 
     nconf.overrides(overrides);
 
-    if (cfenv.getAppEnv().isLocal && !process.env.PORT) {
+    if (appEnv.isLocal && !process.env.PORT) {
         if (nconf.get('port')) {
             process.env.PORT = nconf.get('port');
         }
     }
 
-    nconf.add('cfenv', {type: 'literal', store: cfenv.getAppEnv()});
-    thisConfig = nconf;
-    
-    return thisConfig;
+    nconf.add('cfenv', { type: 'literal', store: appEnv });
+    return nconf;
 }
