@@ -92,7 +92,7 @@ export function configure(options: ConfigOptions): Config {
     }
 
     let vcapLocal: any;
-    let vcapPath: string = options.vcapPath ? options.vcapPath : './vcap-local.js';
+    let vcapPath: string = options.vcapPath ? options.vcapPath : resolve(process.cwd(), '/vcap-local.json');
     try {
         vcapLocal = require(vcapPath);
     } catch (e) { }
