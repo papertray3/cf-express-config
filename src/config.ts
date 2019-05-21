@@ -24,7 +24,6 @@ export interface ConfigOptions {
     envPath?: string, // path to the .env file for dotenv, otherwise './.env'
     vcapPath?: string, // local definition of vcap services, default of './vcap-local.js'
     usage?: string,
-    cliOptions?: CliOptions,
     overrides?: ConfigOverrides
 }
 
@@ -81,9 +80,9 @@ type Transforms = {
     [key: string]: BasicTransform
 }
 
-export function configure(options: ConfigOptions): Config {
+export function configure(configOptions: ConfigOptions, options?: CliOptions): Config {
 
-    let dotEnvPath = options.envPath;
+    let dotEnvPath = configOptions.envPath;
     if (dotEnvPath) {
         config({ path: resolve(normalize(dotEnvPath)) });
     } else {
@@ -91,16 +90,16 @@ export function configure(options: ConfigOptions): Config {
     }
 
     let vcapLocal: any;
-    let vcapPath: string = options.vcapPath ? options.vcapPath : resolve(process.cwd(), 'vcap-local.json');
+    let vcapPath: string = configOptions.vcapPath ? configOptions.vcapPath : resolve(process.cwd(), 'vcap-local.json');
     try {
         vcapLocal = require(vcapPath);
     } catch (e) { }
     let appEnvOpts: any = vcapLocal ? { vcap: vcapLocal } : {};
     let appEnv = cfenv.getAppEnv(appEnvOpts);
 
-    if (options.usage) yargs.usage(options.usage);
-    if (options.version) yargs.version(options.version);
-    let opts: CliOptions = options.cliOptions || commonOptions;
+    if (configOptions.usage) yargs.usage(configOptions.usage);
+    if (configOptions.version) yargs.version(configOptions.version);
+    let opts: CliOptions = options || commonOptions;
     let whitelist: Array<string> = [];
     let transforms: Transforms = {};
     let defaults: ConfigOverrides = {};
@@ -144,7 +143,7 @@ export function configure(options: ConfigOptions): Config {
 
     nconf.defaults(defaults);
 
-    let overrides = options.overrides || {};
+    let overrides = configOptions.overrides || {};
     if (!overrides.isLocal) {
         overrides.isLocal = appEnv.isLocal;
     }
