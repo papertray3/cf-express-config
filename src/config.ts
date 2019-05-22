@@ -28,21 +28,12 @@ export interface ConfigOptions {
 }
 
 export enum CommonConfigNames {
-    ENV = 'env',
     PORT = 'port',
     BIND = 'bind',
     IS_LOCAL = 'isLocal'
 }
 
 export const commonOptions: CliOptions = {};
-commonOptions[CommonConfigNames.ENV] = {
-    describe: 'Operational mode',
-    choices: ['development', 'test', 'production'],
-    type: 'string',
-    env: 'NODE_ENV',
-    confDefault: 'production'
-};
-
 commonOptions[CommonConfigNames.PORT] = {
     describe: 'Port to bind to',
     type: 'number',
