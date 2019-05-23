@@ -27,10 +27,11 @@ export interface ConfigOptions {
     overrides?: ConfigOverrides
 }
 
-export enum CommonConfigNames {
-    PORT = 'port',
-    BIND = 'bind',
-    IS_LOCAL = 'isLocal'
+export class CommonConfigNames {
+    static readonly PORT : string = 'port';
+    static readonly BIND : string = 'bind';
+    static readonly IS_LOCAL : string = 'isLocal';
+    static readonly SERVICES : string = 'services';
 }
 
 export const commonOptions: CliOptions = {};
