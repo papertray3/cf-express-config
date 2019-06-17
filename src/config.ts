@@ -28,10 +28,10 @@ export interface ConfigOptions {
 }
 
 export class CommonConfigNames {
-    static readonly PORT : string = 'port';
-    static readonly BIND : string = 'bind';
-    static readonly IS_LOCAL : string = 'isLocal';
-    static readonly SERVICES : string = 'services';
+    static readonly PORT: string = 'port';
+    static readonly BIND: string = 'bind';
+    static readonly IS_LOCAL: string = 'isLocal';
+    static readonly SERVICES: string = 'services';
 }
 
 export const commonOptions: CliOptions = {};
@@ -72,7 +72,15 @@ type Transforms = {
     [key: string]: BasicTransform
 }
 
-export function configure(configOptions: ConfigOptions, options?: CliOptions): Config {
+let _configure = (options?: CliOptions): Config => {
+    throw new Error('Application not bootstrapped...');
+}
+
+export function configure(options? : CliOptions) : Config {
+    return _configure(options);
+}
+
+export function bootstrap(configOptions: ConfigOptions): void {
 
     let dotEnvPath = configOptions.envPath;
     if (dotEnvPath) {
@@ -89,65 +97,79 @@ export function configure(configOptions: ConfigOptions, options?: CliOptions): C
     let appEnvOpts: any = vcapLocal ? { vcap: vcapLocal } : {};
     let appEnv = cfenv.getAppEnv(appEnvOpts);
 
-    if (configOptions.usage) yargs.usage(configOptions.usage);
-    if (configOptions.version) yargs.version(configOptions.version);
-    let opts: CliOptions = options || commonOptions;
-    let whitelist: Array<string> = [];
-    let transforms: Transforms = {};
-    let defaults: ConfigOverrides = {};
-
-    Object.keys(opts).forEach((key: string) => {
-        let opt = opts[key];
-        if (opt.env) {
-            opt.describe += ' (';
-            let envs = Array.isArray(opt.env) ? opt.env : [opt.env];
-            whitelist.push(key);
-            envs.forEach((env: string, idx: number) => {
-                transforms[env] = bt(key);
-                if (idx > 0) {
-                    opt.describe += ', ';
-                }
-                opt.describe += `env:${env}`;
-            });
-
-            opt.describe += ')';
+    if (vcapLocal) {
+        if (!process.env.VCAP_SERVICES && vcapLocal.services) {
+            process.env.VCAP_SERVICES = JSON.stringify(vcapLocal.services);
         }
 
-        if (opt.confDefault) {
-            defaults[key] = opt.confDefault;
+        if (!process.env.VCAP_APPLICATION && vcapLocal.app) {
+            process.env.VCAP_APPLICATION = JSON.stringify(vcapLocal.app);
         }
-    });
+    }
 
-    yargs.options(opts);
-    nconf
-        .argv(yargs)
-        .env({
-            parseValues: true,
-            whitelist: whitelist,
-            transform: (obj: NconfObject): NconfObject | boolean => {
-                if (transforms[obj.key]) {
-                    return transforms[obj.key](obj);
-                }
+    _configure = (options?: CliOptions): Config => {
 
-                return obj;
+        if (configOptions.usage) yargs.usage(configOptions.usage);
+        if (configOptions.version) yargs.version(configOptions.version);
+        let opts: CliOptions = options || commonOptions;
+        let whitelist: Array<string> = [];
+        let transforms: Transforms = {};
+        let defaults: ConfigOverrides = {};
+
+        Object.keys(opts).forEach((key: string) => {
+            let opt = opts[key];
+            if (opt.env) {
+                opt.describe += ' (';
+                let envs = Array.isArray(opt.env) ? opt.env : [opt.env];
+                whitelist.push(key);
+                envs.forEach((env: string, idx: number) => {
+                    transforms[env] = bt(key);
+                    if (idx > 0) {
+                        opt.describe += ', ';
+                    }
+                    opt.describe += `env:${env}`;
+                });
+
+                opt.describe += ')';
+            }
+
+            if (opt.confDefault) {
+                defaults[key] = opt.confDefault;
             }
         });
 
-    nconf.defaults(defaults);
+        yargs.options(opts);
+        nconf
+            .argv(yargs)
+            .env({
+                parseValues: true,
+                whitelist: whitelist,
+                transform: (obj: NconfObject): NconfObject | boolean => {
+                    if (transforms[obj.key]) {
+                        return transforms[obj.key](obj);
+                    }
 
-    let overrides = configOptions.overrides || {};
-    if (!overrides.isLocal) {
-        overrides.isLocal = appEnv.isLocal;
-    }
+                    return obj;
+                }
+            });
 
-    nconf.overrides(overrides);
+        nconf.defaults(defaults);
 
-    if (appEnv.isLocal && !process.env.PORT) {
-        if (nconf.get('port')) {
-            process.env.PORT = nconf.get('port');
+        let overrides = configOptions.overrides || {};
+        if (!overrides.isLocal) {
+            overrides.isLocal = appEnv.isLocal;
         }
-    }
 
-    nconf.add('cfenv', { type: 'literal', store: appEnv });
-    return nconf;
+        nconf.overrides(overrides);
+
+        if (appEnv.isLocal && !process.env.PORT) {
+            if (nconf.get('port')) {
+                process.env.PORT = nconf.get('port');
+            }
+        }
+
+        nconf.add('cfenv', { type: 'literal', store: appEnv });
+        return nconf;
+
+    };
 }

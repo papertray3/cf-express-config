@@ -6,7 +6,9 @@
   "scripts": {
     "tsc": "tsc",
     "build": "tsc",
-    "clean": "rimraf lib/"
+    "clean": "rimraf lib/",
+    "preveryclean": "npm run clean",
+    "veryclean": "rimraf node_modules/"
   },
   "author": "Sean Thatcher <papertray3@gmail.com>",
   "license": "MIT",
